@@ -33,7 +33,8 @@ def cmd_init(args):
     gfs.save_config(cfg, config_path)
     gfs.run_format_patch(args.commit, args.num_patches, args.prefix,
                          args.topic, version=1,
-                         to_mail=cfg["to"], cc_mail=cfg["cc"])
+                         to_mail=cfg["to"], cc_mail=cfg["cc"],
+                         base=args.base or "")
 
 
 def cmd_run(args):
@@ -50,7 +51,8 @@ def cmd_run(args):
 
     gfs.run_format_patch(args.commit, args.num_patches, args.prefix,
                          topic, args.version,
-                         to_mail=to_mail, cc_mail=cc_mail)
+                         to_mail=to_mail, cc_mail=cc_mail,
+                         base=args.base or "")
 
     if args.version > 1:
         gfs.copy_cover_letter_content(topic, args.version)
@@ -94,8 +96,8 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Examples:\n"
-            "  gfs init -c <sha> -n 3 --prefix 'PATCH' -t my-topic\n"
-            "  gfs -v 2 -c <sha> -n 3 --prefix 'PATCH v2' -t my-topic\n"
+            "  gfs init -c <tip-sha> -n 3 -b <base-sha> --prefix 'PATCH' -t my-topic\n"
+            "  gfs -v 2 -c <tip-sha> -n 3 -b <base-sha> --prefix 'PATCH v2' -t my-topic\n"
             "  gfs check -t my-topic\n"
         ),
     )
@@ -103,9 +105,12 @@ def main():
 
     # -- init (first time) --
     sp = sub.add_parser("init", help="Initialise a new patch series (v1)")
-    sp.add_argument("-c", "--commit", required=True, help="Base commit SHA")
+    sp.add_argument("-c", "--commit", required=True,
+                    help="Tip commit SHA (last commit in series)")
     sp.add_argument("-n", "--num-patches", type=int, required=True,
                     help="Number of patches")
+    sp.add_argument("-b", "--base", default=None,
+                    help="Optional base commit (git format-patch --base)")
     sp.add_argument("--prefix", "-p", required=True,
                     help='Subject prefix, e.g. "PATCH mainline-linux"')
     sp.add_argument("--topic", "-t", required=True,
@@ -126,8 +131,10 @@ def main():
 
     # -- default (subsequent versions) --
     p.add_argument("-v", "--version", type=int, help="Series version (2, 3, …)")
-    p.add_argument("-c", "--commit", help="Base commit SHA")
+    p.add_argument("-c", "--commit", help="Tip commit SHA (last commit in series)")
     p.add_argument("-n", "--num-patches", type=int, help="Number of patches")
+    p.add_argument("-b", "--base", default=None,
+                   help="Optional base commit (git format-patch --base)")
     p.add_argument("--prefix", "-p", help='Subject prefix')
     p.add_argument("--topic", "-t", default=None,
                    help="Topic directory, e.g. for-test-gfs")
