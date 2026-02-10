@@ -55,6 +55,9 @@ cd /path/to/linux
 # 1. Create v1 of a new series
 gfs init -c <sha> -n 3 --prefix "PATCH" -t for-pm-upstream --to user@example.com --cc user@example.com
 
+# OR: Initialize from existing patches (any version)
+gfs sync my-topic/v2
+
 # 2. Run checkpatch
 gfs check -t for-pm-upstream
 
@@ -157,6 +160,90 @@ gfs check -t for-topic
 # Check a specific version
 gfs check -t for-topic -v 3
 ```
+
+---
+
+### `gfs sync` — Initialize project from existing patches
+
+Scans an existing patch directory and automatically creates the `.series.json`
+configuration file by extracting metadata from the patches (To/Cc addresses,
+prefix, patch count). Useful for taking over maintenance of an existing series
+or working with patches received from others.
+
+```bash
+gfs sync [path]
+```
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `path` | | Path to topic directory or version subdirectory (default: current directory) |
+
+**How it works:**
+
+1. Scans the directory structure to find topic name and version number
+2. Counts patches in the version directory (excluding cover letter)
+3. Extracts metadata from patches:
+   - Subject prefix from the `[PREFIX N/M]` pattern
+   - `To:` addresses from all patches
+   - `Cc:` addresses from all patches
+4. Creates `.series.json` with the extracted configuration
+5. Displays suggested next command to generate the next version
+
+**Examples:**
+
+```bash
+# Sync from a specific version directory
+gfs sync my-topic/v2
+
+# Sync from topic directory (uses latest version)
+gfs sync my-topic
+
+# Sync from current directory
+gfs sync .
+cd my-topic && gfs sync
+```
+
+**Expected directory structure:**
+
+```
+my-topic/
+├── v1/
+│   ├── 0000-cover-letter.patch
+│   ├── 0001-first-patch.patch
+│   └── 0002-second-patch.patch
+└── v2/
+    ├── 0000-cover-letter.patch
+    ├── 0001-first-patch.patch
+    └── 0002-second-patch.patch
+```
+
+**Output:**
+
+After running `gfs sync my-topic/v2`, you'll see:
+
+```
+  ── gfs sync ──
+
+  📂 Topic:      my-topic
+  📌 Version:    v2
+  📝 Patches:    2
+  🏷️  Prefix:     PATCH v2
+  📧 To:         maintainer@example.com
+  📧 Cc:         reviewer@example.com, list@vger.kernel.org
+
+  ✅ Project initialized from existing patches.
+
+  Next steps:
+    • Edit my-topic/.series.json if needed
+    • Run: gfs -v 3 -c <sha> -n 2 -p 'PATCH v2 v3' -t my-topic
+```
+
+**When to use:**
+
+- Taking over maintenance of a patch series from someone else
+- Recovering from lost configuration files
+- Working with patch series created by other tools
+- Initializing `gfs` workflow for pre-existing patch directories
 
 ---
 
