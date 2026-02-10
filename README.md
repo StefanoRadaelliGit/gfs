@@ -78,7 +78,7 @@ Creates the first version of a patch series and saves `--to` / `--cc`
 in `<topic>/.series.json` so you don't have to repeat them.
 
 ```bash
-gfs init -c <commit-sha> -n <num-patches> --prefix <prefix> -t <topic> [--to <email>] [--cc <email>]
+gfs init -c <commit-sha> -n <num-patches> --prefix <prefix> -t <topic> [--to <email>] [--cc <email>] [--no-cc]
 ```
 
 | Flag | Required | Description |
@@ -89,6 +89,7 @@ gfs init -c <commit-sha> -n <num-patches> --prefix <prefix> -t <topic> [--to <em
 | `-t`, `--topic` | ✅ | Topic output directory, e.g. `for-pm-upstream` |
 | `--to` | | `To:` email address |
 | `--cc` | | `Cc:` email address |
+| `--no-cc` | | Skip `get_maintainer.pl` pass (single `format-patch` run) |
 
 **Example:**
 
@@ -116,7 +117,7 @@ Generates the next version of the patch series. Automatically injects
 changelog trail headers into every patch.
 
 ```bash
-gfs -v <version> -c <commit-sha> -n <num-patches> --prefix <prefix> -t <topic> [--to <email>] [--cc <email>]
+gfs -v <version> -c <commit-sha> -n <num-patches> --prefix <prefix> -t <topic> [--to <email>] [--cc <email>] [--no-cc]
 ```
 
 | Flag | Required | Description |
@@ -128,6 +129,7 @@ gfs -v <version> -c <commit-sha> -n <num-patches> --prefix <prefix> -t <topic> [
 | `-t`, `--topic` | ✅ | Topic directory |
 | `--to` | | Override saved `To:` address |
 | `--cc` | | Override saved `Cc:` address |
+| `--no-cc` | | Skip `get_maintainer.pl` pass (single `format-patch` run) |
 
 **Example:**
 

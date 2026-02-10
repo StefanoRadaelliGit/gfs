@@ -176,9 +176,13 @@ def inject_trail_cover_letter(patch_path: str, trail_block: str):
 def run_format_patch(commit: str, num_patches: int, prefix: str,
                      topic: str, version: int,
                      to_mail: str = "", cc_mail: str = "",
-                     base: str = "") -> list[str]:
+                     base: str = "",
+                     skip_maintainers: bool = False) -> list[str]:
     """Run git format-patch twice: first to generate files, then with
-    get_maintainer.pl --cc so that the maintainer list is included."""
+    get_maintainer.pl --cc so that the maintainer list is included.
+
+    If skip_maintainers is True, only the first pass is run (no
+    get_maintainer.pl CCs are added)."""
     outdir = os.path.join(topic, f"v{version}")
 
     base_cmd = [
@@ -210,6 +214,10 @@ def run_format_patch(commit: str, num_patches: int, prefix: str,
     files = [l for l in result.stdout.strip().splitlines() if l]
     for f in files:
         print(f"  ✓ {f}")
+
+    if skip_maintainers:
+        print("\n  ℹ Skipping pass 2 (--no-maintainers).")
+        return files
 
     # ── 2nd run: re-generate with get_maintainer.pl cc ───────────
     cover_glob = os.path.join(outdir, "000*")

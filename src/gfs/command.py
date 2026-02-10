@@ -34,7 +34,8 @@ def cmd_init(args):
     gfs.run_format_patch(args.commit, args.num_patches, args.prefix,
                          args.topic, version=1,
                          to_mail=cfg["to"], cc_mail=cfg["cc"],
-                         base=args.base or "")
+                         base=args.base or "",
+                         skip_maintainers=args.no_cc)
 
 
 def cmd_run(args):
@@ -52,7 +53,8 @@ def cmd_run(args):
     gfs.run_format_patch(args.commit, args.num_patches, args.prefix,
                          topic, args.version,
                          to_mail=to_mail, cc_mail=cc_mail,
-                         base=args.base or "")
+                         base=args.base or "",
+                         skip_maintainers=args.no_cc)
 
     if args.version > 1:
         gfs.copy_cover_letter_content(topic, args.version)
@@ -227,6 +229,8 @@ def main():
                     help='To: email address')
     sp.add_argument("--cc", dest="cc_mail", default=None,
                     help='Cc: email address')
+    sp.add_argument("--no-cc", action="store_true", default=False,
+                    help="Skip get_maintainer.pl pass (single format-patch run)")
     sp.set_defaults(func=cmd_init)
 
     # -- check --
@@ -256,6 +260,8 @@ def main():
                    help="To: email address (overrides saved value)")
     p.add_argument("--cc", dest="cc_mail", default=None,
                    help="Cc: email address (overrides saved value)")
+    p.add_argument("--no-cc", action="store_true", default=False,
+                   help="Skip get_maintainer.pl pass (single format-patch run)")
 
     args = p.parse_args()
 
