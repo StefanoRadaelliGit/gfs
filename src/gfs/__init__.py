@@ -175,7 +175,8 @@ def inject_trail_cover_letter(patch_path: str, trail_block: str):
 # ── format-patch ─────────────────────────────────────────────────────
 def run_format_patch(commit: str, num_patches: int, prefix: str,
                      topic: str, version: int,
-                     to_mail: str = "", cc_mail: str = "") -> list[str]:
+                     to_mail: str = "", cc_mail: str = "",
+                     base: str = "") -> list[str]:
     """Run git format-patch twice: first to generate files, then with
     get_maintainer.pl --cc so that the maintainer list is included."""
     outdir = os.path.join(topic, f"v{version}")
@@ -189,6 +190,8 @@ def run_format_patch(commit: str, num_patches: int, prefix: str,
         "--cover-letter",
         "-o", outdir,
     ]
+    if base:
+        base_cmd.append(f"--base={base}")
     if to_mail:
         base_cmd.append(f"--to={to_mail}")
     if cc_mail:
