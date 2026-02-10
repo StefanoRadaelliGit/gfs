@@ -84,7 +84,8 @@ def cmd_check(args):
         sys.exit(1)
 
     print(f"\n  ── checkpatch.pl on {patch_dir} ──\n")
-    cmd = ["./scripts/checkpatch.pl", "--strict", "--codespell"] + patches
+    cmd = ["./scripts/checkpatch.pl", "--max-line-length=80",
+           "--strict", "--codespell"] + patches
     print(f"  ▸ {' '.join(cmd)}\n")
     subprocess.run(cmd)
 
