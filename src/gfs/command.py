@@ -59,6 +59,111 @@ def cmd_run(args):
         gfs.add_changelog_trail(topic, args.version)
 
 
+def cmd_sync(args):
+    """
+    Sync/initialize a project from an existing patch directory.
+
+    Scans the given directory (or auto-detects topic/version from path),
+    extracts metadata from the patches, and creates the .series.json config.
+    """
+    path = Path(args.path).resolve()
+
+    # Determine topic and version from the path
+    # Expected structure: topic/vN/*.patch
+    if path.name.startswith("v") and path.name[1:].isdigit():
+        # User gave us the version directory directly (e.g., topic/v2)
+        version_dir = path
+        topic_dir = path.parent
+        version = int(path.name[1:])
+    elif path.is_dir():
+        # User gave us the topic directory, find the latest version
+        topic_dir = path
+        versions = sorted(
+            [d for d in path.iterdir()
+             if d.is_dir() and d.name.startswith("v") and d.name[1:].isdigit()],
+            key=lambda d: int(d.name[1:])
+        )
+        if not versions:
+            print(f"Error: no version directories (v1, v2, ...) found in {path}/",
+                  file=sys.stderr)
+            sys.exit(1)
+        version_dir = versions[-1]
+        version = int(version_dir.name[1:])
+    else:
+        print(f"Error: {path} is not a valid directory", file=sys.stderr)
+        sys.exit(1)
+
+    topic = topic_dir.name
+
+    # Find patches in the version directory
+    patches = sorted(glob.glob(os.path.join(version_dir, "*.patch")))
+    if not patches:
+        print(f"Error: no .patch files found in {version_dir}/", file=sys.stderr)
+        sys.exit(1)
+
+    # Count patches (excluding cover letter 0000-*)
+    real_patches = [p for p in patches if not Path(p).name.startswith("0000-")]
+    num_patches = len(real_patches)
+
+    # Extract metadata from the first real patch
+    prefix = ""
+    to_addrs = set()
+    cc_addrs = set()
+
+    sample_patch = real_patches[0] if real_patches else patches[0]
+    with open(sample_patch) as f:
+        for line in f:
+            if line.startswith("Subject:"):
+                # Extract prefix from Subject: [PREFIX N/M] title
+                import re
+                m = re.search(r'\[([^\]]+)\s+\d+/\d+\]', line)
+                if m:
+                    prefix = m.group(1).strip()
+                break
+
+    # Scan all patches for To: and Cc: addresses
+    for patch in patches:
+        with open(patch) as f:
+            for line in f:
+                if line.startswith("To:"):
+                    addr = line[3:].strip()
+                    if addr:
+                        to_addrs.add(addr)
+                elif line.startswith("Cc:"):
+                    addr = line[3:].strip()
+                    if addr:
+                        cc_addrs.add(addr)
+                elif line.startswith("Subject:"):
+                    # Headers are done after Subject
+                    break
+
+    # Build config
+    cfg = {
+        "to": ", ".join(sorted(to_addrs)) if to_addrs else "",
+        "cc": ", ".join(sorted(cc_addrs)) if cc_addrs else "",
+    }
+
+    config_path = topic_dir / gfs.CONFIG_NAME
+
+    print(f"\n  ── gfs sync ──\n")
+    print(f"  📂 Topic:      {topic}")
+    print(f"  📌 Version:    v{version}")
+    print(f"  📝 Patches:    {num_patches}")
+    if prefix:
+        print(f"  🏷️  Prefix:     {prefix}")
+    if cfg["to"]:
+        print(f"  📧 To:         {cfg['to'][:60]}{'...' if len(cfg['to']) > 60 else ''}")
+    if cfg["cc"]:
+        print(f"  📧 Cc:         {cfg['cc'][:60]}{'...' if len(cfg['cc']) > 60 else ''}")
+
+    gfs.save_config(cfg, config_path)
+
+    print(f"\n  ✅ Project initialized from existing patches.")
+    print(f"\n  Next steps:")
+    print(f"    • Edit {config_path} if needed")
+    print(f"    • Run: gfs -v {version + 1} -c <sha> -n {num_patches} -p '{prefix} v{version + 1}' -t {topic}")
+
+
 def cmd_check(args):
     """Run checkpatch.pl on the latest (or given) version of a topic."""
     topic = args.topic
@@ -100,6 +205,8 @@ def main():
             "  gfs init -c <tip-sha> -n 3 -b <base-sha> --prefix 'PATCH' -t my-topic\n"
             "  gfs -v 2 -c <tip-sha> -n 3 -b <base-sha> --prefix 'PATCH v2' -t my-topic\n"
             "  gfs check -t my-topic\n"
+            "  gfs sync my-topic/v2       # init project from existing patches\n"
+            "  gfs sync .                 # sync from current directory\n"
         ),
     )
     sub = p.add_subparsers(dest="command")
@@ -130,6 +237,12 @@ def main():
                     help="Version to check (default: latest)")
     sp.set_defaults(func=cmd_check)
 
+    # -- sync --
+    sp = sub.add_parser("sync", help="Initialize project from existing patches")
+    sp.add_argument("path", nargs="?", default=".",
+                    help="Path to topic directory or version subdirectory (default: current dir)")
+    sp.set_defaults(func=cmd_sync)
+
     # -- default (subsequent versions) --
     p.add_argument("-v", "--version", type=int, help="Series version (2, 3, …)")
     p.add_argument("-c", "--commit", help="Tip commit SHA (last commit in series)")
@@ -149,6 +262,8 @@ def main():
     if args.command == "init":
         args.func(args)
     elif args.command == "check":
+        args.func(args)
+    elif args.command == "sync":
         args.func(args)
     else:
         for required in ("version", "commit", "num_patches", "prefix", "topic"):
