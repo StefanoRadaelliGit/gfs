@@ -25,8 +25,8 @@ import gfs
 def cmd_init(args):
     """Initialise a new series: save config, run format-patch for v1."""
     cfg = {
-        "to": args.to_mail or "",
-        "cc": args.cc_mail or "",
+        "to": ",".join(args.to_mail) if args.to_mail else "",
+        "cc": ",".join(args.cc_mail) if args.cc_mail else "",
     }
     config_path = Path(args.topic) / gfs.CONFIG_NAME
     config_path.parent.mkdir(parents=True, exist_ok=True)
@@ -47,8 +47,8 @@ def cmd_run(args):
         with open(config_path) as f:
             cfg = json.load(f)
 
-    to_mail = args.to_mail or cfg.get("to", "")
-    cc_mail = args.cc_mail or cfg.get("cc", "")
+    to_mail = ",".join(args.to_mail) if args.to_mail else cfg.get("to", "")
+    cc_mail = ",".join(args.cc_mail) if args.cc_mail else cfg.get("cc", "")
 
     gfs.run_format_patch(args.commit, args.num_patches, args.prefix,
                          topic, args.version,
@@ -107,42 +107,70 @@ def cmd_sync(args):
     real_patches = [p for p in patches if not Path(p).name.startswith("0000-")]
     num_patches = len(real_patches)
 
-    # Extract metadata from the first real patch
+    # Extract metadata from the cover letter (preferred) or first patch
     prefix = ""
-    to_addrs = set()
-    cc_addrs = set()
+    to_raw = ""
+    cc_raw = ""
 
-    sample_patch = real_patches[0] if real_patches else patches[0]
+    cover_patches = [p for p in patches if Path(p).name.startswith("0000-")]
+    sample_patch = cover_patches[0] if cover_patches else (
+        real_patches[0] if real_patches else patches[0])
+
+    # Parse mail headers, handling folded (continuation) lines.
+    # Header order in git format-patch: Subject, To, Cc — so we must
+    # NOT stop at Subject.
     with open(sample_patch) as f:
+        current_header = None   # "to", "cc", or None
+        current_value = ""
         for line in f:
-            if line.startswith("Subject:"):
+            if line.startswith("To:"):
+                if current_header == "cc":
+                    cc_raw = current_value.strip()
+                current_header = "to"
+                current_value = line[3:].strip()
+            elif line.startswith("Cc:"):
+                if current_header == "to":
+                    to_raw = current_value.strip()
+                current_header = "cc"
+                current_value = line[3:].strip()
+            elif line.startswith("Subject:"):
+                if current_header == "to":
+                    to_raw = current_value.strip()
+                elif current_header == "cc":
+                    cc_raw = current_value.strip()
+                current_header = None
                 # Extract prefix from Subject: [PREFIX N/M] title
                 import re
                 m = re.search(r'\[([^\]]+)\s+\d+/\d+\]', line)
                 if m:
                     prefix = m.group(1).strip()
-                break
-
-    # Scan all patches for To: and Cc: addresses
-    for patch in patches:
-        with open(patch) as f:
-            for line in f:
-                if line.startswith("To:"):
-                    addr = line[3:].strip()
-                    if addr:
-                        to_addrs.add(addr)
-                elif line.startswith("Cc:"):
-                    addr = line[3:].strip()
-                    if addr:
-                        cc_addrs.add(addr)
-                elif line.startswith("Subject:"):
-                    # Headers are done after Subject
+            elif current_header and (line.startswith(" ") or line.startswith("\t")):
+                # Continuation (folded) line
+                current_value += line.strip()
+            else:
+                if current_header == "to":
+                    to_raw = current_value.strip()
+                elif current_header == "cc":
+                    cc_raw = current_value.strip()
+                current_header = None
+                current_value = ""
+                # Blank line = end of mail headers
+                if line.strip() == "":
                     break
+        # Flush if we hit EOF without a blank line
+        if current_header == "to":
+            to_raw = current_value.strip()
+        elif current_header == "cc":
+            cc_raw = current_value.strip()
 
-    # Build config
+    # Strip trailing commas from raw values
+    to_raw = to_raw.rstrip(",").strip()
+    cc_raw = cc_raw.rstrip(",").strip()
+
+    # Build config — preserve original order
     cfg = {
-        "to": ", ".join(sorted(to_addrs)) if to_addrs else "",
-        "cc": ", ".join(sorted(cc_addrs)) if cc_addrs else "",
+        "to": to_raw,
+        "cc": cc_raw,
     }
 
     config_path = topic_dir / gfs.CONFIG_NAME
@@ -225,10 +253,10 @@ def main():
                     help='Subject prefix, e.g. "PATCH mainline-linux"')
     sp.add_argument("--topic", "-t", required=True,
                     help='Topic directory, e.g. "for-pm-upstream"')
-    sp.add_argument("--to", dest="to_mail", default=None,
-                    help='To: email address')
-    sp.add_argument("--cc", dest="cc_mail", default=None,
-                    help='Cc: email address')
+    sp.add_argument("--to", dest="to_mail", action="append", default=None,
+                    help='To: email address (may be repeated)')
+    sp.add_argument("--cc", dest="cc_mail", action="append", default=None,
+                    help='Cc: email address (may be repeated)')
     sp.add_argument("--no-cc", action="store_true", default=False,
                     help="Skip get_maintainer.pl pass (single format-patch run)")
     sp.set_defaults(func=cmd_init)
@@ -256,10 +284,10 @@ def main():
     p.add_argument("--prefix", "-p", help='Subject prefix')
     p.add_argument("--topic", "-t", default=None,
                    help="Topic directory, e.g. for-test-gfs")
-    p.add_argument("--to", dest="to_mail", default=None,
-                   help="To: email address (overrides saved value)")
-    p.add_argument("--cc", dest="cc_mail", default=None,
-                   help="Cc: email address (overrides saved value)")
+    p.add_argument("--to", dest="to_mail", action="append", default=None,
+                   help="To: email address (may be repeated; overrides saved value)")
+    p.add_argument("--cc", dest="cc_mail", action="append", default=None,
+                   help="Cc: email address (may be repeated; overrides saved value)")
     p.add_argument("--no-cc", action="store_true", default=False,
                    help="Skip get_maintainer.pl pass (single format-patch run)")
 

@@ -197,9 +197,15 @@ def run_format_patch(commit: str, num_patches: int, prefix: str,
     if base:
         base_cmd.append(f"--base={base}")
     if to_mail:
-        base_cmd.append(f"--to={to_mail}")
+        for addr in to_mail.split(","):
+            addr = addr.strip()
+            if addr:
+                base_cmd.append(f"--to={addr}")
     if cc_mail:
-        base_cmd.append(f"--cc={cc_mail}")
+        for addr in cc_mail.split(","):
+            addr = addr.strip()
+            if addr:
+                base_cmd.append(f"--cc={addr}")
 
     # ── 1st run: generate the patch files ────────────────────────
     print("\n  ── Pass 1: generate patches ──\n")
