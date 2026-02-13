@@ -8,7 +8,7 @@ This module contains the core logic:
   - per-topic config management
 """
 
-__version__ = "0.0.3"
+__version__ = "0.0.4"
 
 import glob
 import json
