@@ -78,7 +78,7 @@ Creates the first version of a patch series and saves `--to` / `--cc`
 in `<topic>/.series.json` so you don't have to repeat them.
 
 ```bash
-gfs init -c <commit-sha> -n <num-patches> --prefix <prefix> -t <topic> [--to <email>] [--cc <email>] [--no-cc]
+gfs init -c <commit-sha> -n <num-patches> --prefix <prefix> -t <topic> [--to <email>]... [--cc <email>]... [--no-cc] [--no-to]
 ```
 
 | Flag | Required | Description |
@@ -87,9 +87,10 @@ gfs init -c <commit-sha> -n <num-patches> --prefix <prefix> -t <topic> [--to <em
 | `-n`, `--num-patches` | ✅ | Number of patches to generate |
 | `-p`, `--prefix` | ✅ | Subject prefix, e.g. `"PATCH"`, `"PATCH v2"` |
 | `-t`, `--topic` | ✅ | Topic output directory, e.g. `for-pm-upstream` |
-| `--to` | | `To:` email address |
-| `--cc` | | `Cc:` email address |
-| `--no-cc` | | Skip `get_maintainer.pl` pass (single `format-patch` run) |
+| `--to` | | `To:` email address (may be repeated for multiple addresses) |
+| `--cc` | | `Cc:` email address (may be repeated for multiple addresses) |
+| `--no-cc` | | Skip saved `Cc:` addresses and `get_maintainer.pl` pass |
+| `--no-to` | | Skip saved `To:` addresses |
 
 **Example:**
 
@@ -117,7 +118,7 @@ Generates the next version of the patch series. Automatically injects
 changelog trail headers into every patch.
 
 ```bash
-gfs -v <version> -c <commit-sha> -n <num-patches> --prefix <prefix> -t <topic> [--to <email>] [--cc <email>] [--no-cc]
+gfs -v <version> -c <commit-sha> -n <num-patches> --prefix <prefix> -t <topic> [--to <email>]... [--cc <email>]... [--no-cc] [--no-to]
 ```
 
 | Flag | Required | Description |
@@ -127,14 +128,23 @@ gfs -v <version> -c <commit-sha> -n <num-patches> --prefix <prefix> -t <topic> [
 | `-n`, `--num-patches` | ✅ | Number of patches |
 | `-p`, `--prefix` | ✅ | Subject prefix, e.g. `"PATCH v2"` |
 | `-t`, `--topic` | ✅ | Topic directory |
-| `--to` | | Override saved `To:` address |
-| `--cc` | | Override saved `Cc:` address |
-| `--no-cc` | | Skip `get_maintainer.pl` pass (single `format-patch` run) |
+| `--to` | | Override saved `To:` address (may be repeated) |
+| `--cc` | | Override saved `Cc:` address (may be repeated) |
+| `--no-cc` | | Skip saved `Cc:` addresses and `get_maintainer.pl` pass |
+| `--no-to` | | Skip saved `To:` addresses |
 
-**Example:**
+**Examples:**
 
 ```bash
+# Use saved To/Cc from .series.json
 gfs -v 2 -c abc1234 -n 3 --prefix "PATCH v2" -t for-topic
+
+# Override To addresses on the command line
+gfs -v 2 -c abc1234 -n 3 --prefix "PATCH v2" -t for-topic \
+    --to user@example.com --to maintainer@example.com
+
+# Generate patches without any To/Cc headers (plain format-patch)
+gfs -v 2 -c abc1234 -n 3 --prefix "PATCH v2" -t for-topic --no-to --no-cc
 ```
 
 ---

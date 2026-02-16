@@ -35,7 +35,8 @@ def cmd_init(args):
                          args.topic, version=1,
                          to_mail=cfg["to"], cc_mail=cfg["cc"],
                          base=args.base or "",
-                         skip_maintainers=args.no_cc)
+                         skip_maintainers=args.no_cc,
+                         skip_to=args.no_to)
 
 
 def cmd_run(args):
@@ -54,7 +55,8 @@ def cmd_run(args):
                          topic, args.version,
                          to_mail=to_mail, cc_mail=cc_mail,
                          base=args.base or "",
-                         skip_maintainers=args.no_cc)
+                         skip_maintainers=args.no_cc,
+                         skip_to=args.no_to)
 
     if args.version > 1:
         gfs.copy_cover_letter_content(topic, args.version)
@@ -259,6 +261,8 @@ def main():
                     help='Cc: email address (may be repeated)')
     sp.add_argument("--no-cc", action="store_true", default=False,
                     help="Skip get_maintainer.pl pass (single format-patch run)")
+    sp.add_argument("--no-to", action="store_true", default=False,
+                    help="Skip saved To: addresses")
     sp.set_defaults(func=cmd_init)
 
     # -- check --
@@ -290,6 +294,8 @@ def main():
                    help="Cc: email address (may be repeated; overrides saved value)")
     p.add_argument("--no-cc", action="store_true", default=False,
                    help="Skip get_maintainer.pl pass (single format-patch run)")
+    p.add_argument("--no-to", action="store_true", default=False,
+                   help="Skip saved To: addresses")
 
     args = p.parse_args()
 

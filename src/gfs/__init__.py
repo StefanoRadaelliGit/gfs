@@ -177,12 +177,14 @@ def run_format_patch(commit: str, num_patches: int, prefix: str,
                      topic: str, version: int,
                      to_mail: str = "", cc_mail: str = "",
                      base: str = "",
-                     skip_maintainers: bool = False) -> list[str]:
+                     skip_maintainers: bool = False,
+                     skip_to: bool = False) -> list[str]:
     """Run git format-patch twice: first to generate files, then with
     get_maintainer.pl --cc so that the maintainer list is included.
 
     If skip_maintainers is True, only the first pass is run (no
-    get_maintainer.pl CCs are added)."""
+    get_maintainer.pl CCs are added).
+    If skip_to is True, saved To: addresses are omitted."""
     outdir = os.path.join(topic, f"v{version}")
 
     base_cmd = [
@@ -196,12 +198,12 @@ def run_format_patch(commit: str, num_patches: int, prefix: str,
     ]
     if base:
         base_cmd.append(f"--base={base}")
-    if to_mail:
+    if to_mail and not skip_to:
         for addr in to_mail.split(","):
             addr = addr.strip()
             if addr:
                 base_cmd.append(f"--to={addr}")
-    if cc_mail:
+    if cc_mail and not skip_maintainers:
         for addr in cc_mail.split(","):
             addr = addr.strip()
             if addr:
